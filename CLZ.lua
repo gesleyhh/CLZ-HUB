@@ -1,4 +1,4 @@
--- ⚡ CLZ ULTRA FARM + AUTO-BOSS | VERSÃO CORRIGIDA — SEM EXPULSÃO
+-- ⚡ CLZ ULTRA FARM | 32/QUADRO + SEM KICK + SEM REINICIAR
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
@@ -25,10 +25,16 @@ BuscarEventos()
 local isFarming = false
 local AutoRebirth = false
 local GraficosOtimizados = false
--- ✅ CORRIGIDO: valor seguro que NÃO expulsa (800 = muito alto → servidor bloqueia)
-local REPS_POR_QUADRO = 8
+
+-- ✅ 32 POR QUADRO + PROTEÇÃO = RÁPIDO E ESTÁVEL
+local REPS_POR_QUADRO = 32
+local LIMITE_SEGURANCA = 1900 -- não passa disso por segundo
 local Minimizado = false
 local Encerrado = false
+
+-- Contador pra não acumular tráfego
+local contadorAcoes = 0
+local ultimoReset = tick()
 
 ----------------------------------------------------------------
 -- ⚡ OTIMIZAÇÃO TOTAL — TIRA TODO LAG
@@ -157,28 +163,47 @@ local function equipRareBossPets()
 end
 
 ----------------------------------------------------------------
--- ⚡ FARM — INSTANTÂNEO
+-- ⚡ FARM — 32/QUADRO + PROTEÇÃO DE TRÁFEGO
 ----------------------------------------------------------------
 local farmConnection = nil
 local function PararFarm()
     isFarming = false
     if farmConnection then farmConnection:Disconnect() farmConnection = nil end
+    contadorAcoes = 0
+    ultimoReset = tick()
 end
 local function IniciarFarm()
     if farmConnection then return end
     BuscarEventos()
     if not muscleEvent then return end
     isFarming = true
+    contadorAcoes = 0
+    ultimoReset = tick()
+    
     farmConnection = RunService.Heartbeat:Connect(function()
         if not isFarming or Encerrado or not muscleEvent then return end
-        for _ = 1, REPS_POR_QUADRO do
+        
+        -- ✅ RESETA CONTADOR A CADA SEGUNDO
+        if tick() - ultimoReset >= 1 then
+            contadorAcoes = 0
+            ultimoReset = tick()
+        end
+        
+        -- ✅ PARA SE PASSAR DO LIMITE SEGURO
+        if contadorAcoes >= LIMITE_SEGURANCA then return end
+        
+        -- ✅ CALCULA QUANTIDADE SEM EXCEDER
+        local quantoFazer = math.min(REPS_POR_QUADRO, LIMITE_SEGURANCA - contadorAcoes)
+        
+        for _ = 1, quantoFazer do
             pcall(function() muscleEvent:FireServer("rep") end)
+            contadorAcoes = contadorAcoes + 1
         end
     end)
 end
 
 ----------------------------------------------------------------
--- ⚡ RENASCIMENTO — SEM COOLDOWN
+-- ⚡ RENASCIMENTO — SEM COOLDOWN + ESTÁVEL
 ----------------------------------------------------------------
 local RebirthConnection = nil
 local function PararRenascimento()
@@ -203,7 +228,7 @@ local function TentarRenascer()
         task.spawn(function()
             pcall(function()
                 rebirthRemote:InvokeServer("rebirthRequest")
-                task.wait(0.1)
+                task.wait(0.15) -- espaçamento estável
                 rebirthRemote:FireServer("rebirthRequest")
             end)
         end)
@@ -256,7 +281,6 @@ screenGui.ResetOnSpawn = false
 screenGui.IgnoreGuiInset = true
 screenGui.Parent = playerGui
 
--- ✅ BOTÃO MINIMIZADO NO LOCAL QUE VOCÊ DEIXOU
 local miniButton = Instance.new("TextButton")
 miniButton.Name = "MiniButton"
 miniButton.Size = UDim2.new(0, 52, 0, 52)
@@ -274,7 +298,6 @@ miniStroke.Color = AZUL_BRILHANTE
 miniStroke.Thickness = 3
 miniStroke.Parent = miniButton
 
--- JANELA PRINCIPAL
 local frame = Instance.new("Frame")
 frame.Size = UDim2.new(0, 310, 0, 350)
 frame.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -457,7 +480,7 @@ local AlternarFarm = function()
         IniciarFarm()
         BotaoToggle.Text = "⏸️ PARAR FARM"
         BotaoToggle.BackgroundColor3 = SUCESSO_VERDE
-        status.Text = "🟢 FARMANDO • SEM RISCO ⚡"
+        status.Text = "🟢 FARMANDO • 32/quadro + SEM KICK ⚡"
         status.TextColor3 = SUCESSO_VERDE
     end
 end
@@ -475,7 +498,7 @@ local AlternarRebirth = function()
         IniciarRenascimento()
         BotaoRebirth.Text = "⏹️ PARAR RENASCIMENTO"
         BotaoRebirth.BackgroundColor3 = SUCESSO_VERDE
-        rebirthStatus.Text = "🟢 RENASCENDO • SEM RISCO ⚡"
+        rebirthStatus.Text = "🟢 RENASCENDO • ESTÁVEL ⚡"
         rebirthStatus.TextColor3 = SUCESSO_VERDE
     end
 end
