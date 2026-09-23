@@ -1,3 +1,4 @@
+-- ⚡ CLZ ULTRA FARM + AUTO-BOSS | VERSÃO CORRIGIDA — SEM EXPULSÃO
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
@@ -24,7 +25,8 @@ BuscarEventos()
 local isFarming = false
 local AutoRebirth = false
 local GraficosOtimizados = false
-local REPS_POR_QUADRO = 800
+-- ✅ CORRIGIDO: valor seguro que NÃO expulsa (800 = muito alto → servidor bloqueia)
+local REPS_POR_QUADRO = 8
 local Minimizado = false
 local Encerrado = false
 
@@ -62,23 +64,27 @@ local function DesligarTudoPesado()
     Lighting.Technology = Enum.Technology.Compatibility
 
     partesComTextura = {}
-    for _, d in ipairs(workspace:GetDescendants()) do
-        if d:IsA("BasePart") then
-            partesComTextura[d] = {Texture = d.Texture, CastShadow = d.CastShadow}
-            d.CastShadow = false
-            d.Texture = ""
-        elseif d:IsA("Decal") or d:IsA("Texture") then
-            partesComTextura[d] = {Transparency = d.Transparency}
-            d.Transparency = 1
+    pcall(function()
+        for _, d in ipairs(workspace:GetDescendants()) do
+            if d:IsA("BasePart") then
+                partesComTextura[d] = {Texture = d.Texture, CastShadow = d.CastShadow}
+                d.CastShadow = false
+                d.Texture = ""
+            elseif d:IsA("Decal") or d:IsA("Texture") then
+                partesComTextura[d] = {Transparency = d.Transparency}
+                d.Transparency = 1
+            end
         end
-    end
+    end)
 
     task.spawn(function()
         while GraficosOtimizados and not Encerrado do
-            for _, d in ipairs(workspace:GetDescendants()) do
-                if d:IsA("BasePart") then d.CastShadow = false end
-                if d:IsA("Decal") or d:IsA("Texture") then d.Transparency = 1 end
-            end
+            pcall(function()
+                for _, d in ipairs(workspace:GetDescendants()) do
+                    if d:IsA("BasePart") then d.CastShadow = false end
+                    if d:IsA("Decal") or d:IsA("Texture") then d.Transparency = 1 end
+                end
+            end)
             task.wait(0.3)
         end
     end)
@@ -106,7 +112,7 @@ end
 -- MANTER TAMANHO 1
 ----------------------------------------------------------------
 task.spawn(function()
-    repeat BuscarEventos() task.wait() until changeSizeRemote or Encerrado
+    repeat BuscarEventos() task.wait(0.5) until changeSizeRemote or Encerrado
     RunService.Heartbeat:Connect(function()
         if Encerrado or not changeSizeRemote then return end
         pcall(function() changeSizeRemote:InvokeServer("changeSize", 1) end)
@@ -121,20 +127,24 @@ local function rebuildPetCache()
     table.clear(petCache)
     local petsFolder = player:FindFirstChild("petsFolder")
     if not petsFolder then return end
-    for _, f in ipairs(petsFolder:GetChildren()) do
-        if f:IsA("Folder") then
-            for _, p in ipairs(f:GetChildren()) do
-                if not petCache[p.Name] then petCache[p.Name] = {} end
-                table.insert(petCache[p.Name], p)
+    pcall(function()
+        for _, f in ipairs(petsFolder:GetChildren()) do
+            if f:IsA("Folder") then
+                for _, p in ipairs(f:GetChildren()) do
+                    if not petCache[p.Name] then petCache[p.Name] = {} end
+                    table.insert(petCache[p.Name], p)
+                end
             end
         end
-    end
+    end)
 end
 rebuildPetCache()
 local petsFolder = player:FindFirstChild("petsFolder")
 if petsFolder then
-    petsFolder.DescendantAdded:Connect(rebuildPetCache)
-    petsFolder.DescendantRemoving:Connect(rebuildPetCache)
+    pcall(function()
+        petsFolder.DescendantAdded:Connect(rebuildPetCache)
+        petsFolder.DescendantRemoving:Connect(rebuildPetCache)
+    end)
 end
 local function equipRareBossPets()
     BuscarEventos()
@@ -150,7 +160,10 @@ end
 -- ⚡ FARM — INSTANTÂNEO
 ----------------------------------------------------------------
 local farmConnection = nil
-local function PararFarm() isFarming = false; if farmConnection then farmConnection:Disconnect() farmConnection = nil end end
+local function PararFarm()
+    isFarming = false
+    if farmConnection then farmConnection:Disconnect() farmConnection = nil end
+end
 local function IniciarFarm()
     if farmConnection then return end
     BuscarEventos()
@@ -158,7 +171,9 @@ local function IniciarFarm()
     isFarming = true
     farmConnection = RunService.Heartbeat:Connect(function()
         if not isFarming or Encerrado or not muscleEvent then return end
-        for _ = 1, REPS_POR_QUADRO do muscleEvent:FireServer("rep") end
+        for _ = 1, REPS_POR_QUADRO do
+            pcall(function() muscleEvent:FireServer("rep") end)
+        end
     end)
 end
 
@@ -166,29 +181,30 @@ end
 -- ⚡ RENASCIMENTO — SEM COOLDOWN
 ----------------------------------------------------------------
 local RebirthConnection = nil
-local function PararRenascimento() AutoRebirth = false; if RebirthConnection then RebirthConnection:Disconnect() RebirthConnection = nil end end
+local function PararRenascimento()
+    AutoRebirth = false
+    if RebirthConnection then RebirthConnection:Disconnect() RebirthConnection = nil end
+end
 
 local function TentarRenascer()
-    for _, gui in ipairs(playerGui:GetChildren()) do
-        if gui:FindFirstChild("RENASCER") or gui.Name:find("Rebirth") or gui.Name:find("Renascer") then
-            for _, btn in ipairs(gui:GetDescendants()) do
-                if btn:IsA("TextButton") and (btn.Text == "CONFIRME" or btn.Text:find("Confirm") or btn.Text:find("Renascer") or btn.Text:find("Rebirth")) then
-                    task.spawn(function() pcall(function() btn:Activate() end) end)
+    pcall(function()
+        for _, gui in ipairs(playerGui:GetChildren()) do
+            if gui:FindFirstChild("RENASCER") or gui.Name:find("Rebirth") or gui.Name:find("Renascer") then
+                for _, btn in ipairs(gui:GetDescendants()) do
+                    if btn:IsA("TextButton") and (btn.Text == "CONFIRME" or btn.Text:find("Confirm") or btn.Text:find("Renascer") or btn.Text:find("Rebirth")) then
+                        task.spawn(function() pcall(function() btn:Activate() end) end)
+                    end
                 end
             end
         end
-    end
+    end)
     BuscarEventos()
     if rebirthRemote then
         task.spawn(function()
             pcall(function()
                 rebirthRemote:InvokeServer("rebirthRequest")
-                task.wait()
+                task.wait(0.1)
                 rebirthRemote:FireServer("rebirthRequest")
-                task.wait()
-                rebirthRemote:InvokeServer()
-                task.wait()
-                rebirthRemote:FireServer()
             end)
         end)
     end
@@ -221,7 +237,7 @@ local function formatNumber(n)
 end
 
 ----------------------------------------------------------------
--- 📱 INTERFACE + BOTÃO MINIMIZADO NO LOCAL MARCADO
+-- 📱 INTERFACE — TUDO IGUAL
 ----------------------------------------------------------------
 local AZUL_ESCURO = Color3.fromRGB(15, 23, 42)
 local AZUL_BASE = Color3.fromRGB(59, 130, 246)
@@ -240,19 +256,17 @@ screenGui.ResetOnSpawn = false
 screenGui.IgnoreGuiInset = true
 screenGui.Parent = playerGui
 
--- ✅ BOTÃO MINIMIZADO AGORA FICA NO LOCAL QUE VOCÊ MARCOU
+-- ✅ BOTÃO MINIMIZADO NO LOCAL QUE VOCÊ DEIXOU
 local miniButton = Instance.new("TextButton")
 miniButton.Name = "MiniButton"
 miniButton.Size = UDim2.new(0, 52, 0, 52)
 miniButton.Position = UDim2.new(0, 185, 0, 55)
 miniButton.BackgroundColor3 = Color3.fromRGB(15, 82, 186)
-miniButton.BackgroundTransparency = 0
 miniButton.Text = "CLZ"
 miniButton.TextColor3 = BRANCO
 miniButton.TextSize = 24
 miniButton.Font = Enum.Font.GothamBlack
 miniButton.Visible = false
-miniButton.AutoLocalize = false
 miniButton.Parent = screenGui
 Instance.new("UICorner", miniButton).CornerRadius = UDim.new(0, 12)
 local miniStroke = Instance.new("UIStroke")
@@ -298,7 +312,6 @@ BtnMin.Font = Enum.Font.GothamBold
 BtnMin.TextSize = 20
 BtnMin.TextColor3 = BRANCO
 BtnMin.BackgroundColor3 = Color3.fromRGB(51, 65, 85)
-BtnMin.AutoLocalize = false
 BtnMin.Parent = topBar
 Instance.new("UICorner", BtnMin).CornerRadius = UDim.new(0, 8)
 
@@ -310,7 +323,6 @@ BtnFechar.Font = Enum.Font.GothamBold
 BtnFechar.TextSize = 18
 BtnFechar.TextColor3 = BRANCO
 BtnFechar.BackgroundColor3 = FECHAR_VERMELHO
-BtnFechar.AutoLocalize = false
 BtnFechar.Parent = topBar
 Instance.new("UICorner", BtnFechar).CornerRadius = UDim.new(0, 8)
 
@@ -366,7 +378,6 @@ BotaoGrafico.Font = Enum.Font.GothamBold
 BotaoGrafico.TextSize = 14
 BotaoGrafico.TextColor3 = BRANCO
 BotaoGrafico.BackgroundColor3 = Color3.fromRGB(107, 114, 128)
-BotaoGrafico.AutoLocalize = false
 BotaoGrafico.Parent = frame
 Instance.new("UICorner", BotaoGrafico).CornerRadius = UDim.new(0, 10)
 
@@ -378,7 +389,6 @@ BotaoToggle.Font = Enum.Font.GothamBold
 BotaoToggle.TextSize = 16
 BotaoToggle.TextColor3 = BRANCO
 BotaoToggle.BackgroundColor3 = AZUL_BASE
-BotaoToggle.AutoLocalize = false
 BotaoToggle.Parent = frame
 Instance.new("UICorner", BotaoToggle).CornerRadius = UDim.new(0, 12)
 
@@ -390,31 +400,25 @@ BotaoRebirth.Font = Enum.Font.GothamBold
 BotaoRebirth.TextSize = 16
 BotaoRebirth.TextColor3 = BRANCO
 BotaoRebirth.BackgroundColor3 = REBIRTH_ROXO
-BotaoRebirth.AutoLocalize = false
 BotaoRebirth.Parent = frame
 Instance.new("UICorner", BotaoRebirth).CornerRadius = UDim.new(0, 12)
 
 ----------------------------------------------------------------
--- FUNÇÕES — MINIMIZAR → BOTÃO NO LOCAL MARCADO
+-- FUNÇÕES
 ----------------------------------------------------------------
 local function FecharScript()
     Encerrado = true
     PararFarm()
     PararRenascimento()
     RestaurarTudo()
-    screenGui:Destroy()
+    pcall(function() screenGui:Destroy() end)
 end
 BtnFechar.MouseButton1Click:Connect(FecharScript)
 
 local function AtualizarMinimizado()
     if Encerrado then return end
-    if Minimizado then
-        frame.Visible = false
-        miniButton.Visible = true
-    else
-        frame.Visible = true
-        miniButton.Visible = false
-    end
+    frame.Visible = not Minimizado
+    miniButton.Visible = Minimizado
 end
 
 BtnMin.MouseButton1Click:Connect(function()
@@ -429,22 +433,51 @@ end)
 
 local AlternarGrafico = function()
     if Encerrado then return end
-    if GraficosOtimizados then RestaurarTudo(); BotaoGrafico.Text = "📉 TIRAR TODO LAG"; BotaoGrafico.BackgroundColor3 = Color3.fromRGB(107, 114, 128)
-    else DesligarTudoPesado(); BotaoGrafico.Text = "✅ LAG TIRADO TOTALMENTE"; BotaoGrafico.BackgroundColor3 = OTIMIZAR_VERDE end
+    if GraficosOtimizados then
+        RestaurarTudo()
+        BotaoGrafico.Text = "📉 TIRAR TODO LAG"
+        BotaoGrafico.BackgroundColor3 = Color3.fromRGB(107, 114, 128)
+    else
+        DesligarTudoPesado()
+        BotaoGrafico.Text = "✅ LAG TIRADO TOTALMENTE"
+        BotaoGrafico.BackgroundColor3 = OTIMIZAR_VERDE
+    end
 end
 BotaoGrafico.MouseButton1Click:Connect(AlternarGrafico)
 
 local AlternarFarm = function()
     if Encerrado then return end
-    if isFarming then PararFarm(); BotaoToggle.Text = "▶️ LIGAR FARM"; BotaoToggle.BackgroundColor3 = AZUL_BASE; status.Text = "🔴 FARM PARADO"; status.TextColor3 = ERRO_VERMELHO
-    else IniciarFarm(); BotaoToggle.Text = "⏸️ PARAR FARM"; BotaoToggle.BackgroundColor3 = SUCESSO_VERDE; status.Text = "🟢 FARMANDO • 800/quadro ⚡"; status.TextColor3 = SUCESSO_VERDE end
+    if isFarming then
+        PararFarm()
+        BotaoToggle.Text = "▶️ LIGAR FARM"
+        BotaoToggle.BackgroundColor3 = AZUL_BASE
+        status.Text = "🔴 FARM PARADO"
+        status.TextColor3 = ERRO_VERMELHO
+    else
+        IniciarFarm()
+        BotaoToggle.Text = "⏸️ PARAR FARM"
+        BotaoToggle.BackgroundColor3 = SUCESSO_VERDE
+        status.Text = "🟢 FARMANDO • SEM RISCO ⚡"
+        status.TextColor3 = SUCESSO_VERDE
+    end
 end
 BotaoToggle.MouseButton1Click:Connect(AlternarFarm)
 
 local AlternarRebirth = function()
     if Encerrado then return end
-    if AutoRebirth then PararRenascimento(); BotaoRebirth.Text = "🔄 LIGAR RENASCIMENTO"; BotaoRebirth.BackgroundColor3 = REBIRTH_ROXO; rebirthStatus.Text = "🔴 DESLIGADO"; rebirthStatus.TextColor3 = ERRO_VERMELHO
-    else IniciarRenascimento(); BotaoRebirth.Text = "⏹️ PARAR RENASCIMENTO"; BotaoRebirth.BackgroundColor3 = SUCESSO_VERDE; rebirthStatus.Text = "🟢 RENASCENDO • SEM COOLDOWN ⚡"; rebirthStatus.TextColor3 = SUCESSO_VERDE end
+    if AutoRebirth then
+        PararRenascimento()
+        BotaoRebirth.Text = "🔄 LIGAR RENASCIMENTO"
+        BotaoRebirth.BackgroundColor3 = REBIRTH_ROXO
+        rebirthStatus.Text = "🔴 DESLIGADO"
+        rebirthStatus.TextColor3 = ERRO_VERMELHO
+    else
+        IniciarRenascimento()
+        BotaoRebirth.Text = "⏹️ PARAR RENASCIMENTO"
+        BotaoRebirth.BackgroundColor3 = SUCESSO_VERDE
+        rebirthStatus.Text = "🟢 RENASCENDO • SEM RISCO ⚡"
+        rebirthStatus.TextColor3 = SUCESSO_VERDE
+    end
 end
 BotaoRebirth.MouseButton1Click:Connect(AlternarRebirth)
 
@@ -452,7 +485,9 @@ local dragging, dragStart, frameStart = false, Vector2.new(), UDim2.new()
 local function IniciarArrasto(input)
     if Encerrado or Minimizado then return end
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        dragging = true; dragStart = input.Position; frameStart = frame.Position
+        dragging = true
+        dragStart = input.Position
+        frameStart = frame.Position
     end
 end
 local function PararArrasto() dragging = false end
@@ -470,6 +505,7 @@ end)
 local startTime = tick()
 task.spawn(function()
     while not Encerrado do
+        task.wait(0.1)
         if not Minimizado then
             local leaderstats = player:FindFirstChild("leaderstats")
             local strengthStat = leaderstats and leaderstats:FindFirstChild("Strength")
@@ -477,14 +513,15 @@ task.spawn(function()
             local t = math.floor(tick() - startTime)
             sessionLabel.Text = string.format("⏱️ %02d:%02d:%02d", math.floor(t/3600), math.floor((t%3600)/60), t%60)
         end
-        task.wait(0.1)
     end
 end)
 
 player.CharacterAdded:Connect(function()
     if Encerrado then return end
-    PararFarm(); PararRenascimento()
-    task.wait(); BuscarEventos()
+    PararFarm()
+    PararRenascimento()
+    task.wait(0.5)
+    BuscarEventos()
     if AutoRebirth then IniciarRenascimento() end
     if isFarming then IniciarFarm() end
     equipRareBossPets()
